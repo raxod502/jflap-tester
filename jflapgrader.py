@@ -631,7 +631,6 @@ def runTests(cmdPrefix, testFile, timeLimit):
         with open(studentFile) as f:
             p.ParseFile(f)
 
-        # Don't know what this does the original was not documented
         TRANSprocessing()
 
         # get the number of states
