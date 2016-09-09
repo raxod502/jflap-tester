@@ -1,8 +1,3 @@
-import argparse
-import os
-import os.path
-import shutil
-import sys
 import traceback
 import xml.parsers.expat
 
