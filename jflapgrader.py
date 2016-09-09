@@ -90,7 +90,7 @@ def tm_char_data(data):
 def tm_TRANSprocessing():
     global TRANS, TRANS2
     TRANS2 = []
-    for k in TRANS.iteritems():
+    for k in TRANS.items():
         TRANS2.extend([k])
     for k in range(len(TRANS2)):
         trans_list = TRANS2[k][1]
@@ -124,11 +124,11 @@ def tm_takingInput(filename):
                 elif INPUTS[i][0] == 'reject':
                     INPUTS2[""] = False
                 else:
-                    print "ERROR", INPUTS[i]
+                    print("ERROR", INPUTS[i])
             elif INPUTS[i][1] == 'reject':
                 INPUTS2[INPUTS[i][0]] = False
             else:
-                print "ERROR", INPUTS[i]
+                print("ERROR", INPUTS[i])
                 INPUTS2[INPUTS[i][0]] = 'UNDEFINED. ERROR'
 
 
@@ -153,7 +153,7 @@ def tm_stateTrans2(sState, left, right):
         return True
 
     elif steps >= THRESHOLD:
-        print "..."
+        print("...")
         return TOO_MANY  # a string...
 
     else:
@@ -211,7 +211,7 @@ def tm_checker(filename):
         if 'initial' in value:
             start_state = key
 
-    for i in INPUTS2.iterkeys():
+    for i in INPUTS2.keys():
         BEENTO = {}
         steps = 0
         result = tm_stateTrans2(start_state, '', i)
@@ -233,19 +233,19 @@ def tm_print_result_line(inpt, result, expected):
 
     global of
     if of is not None:  # if there is an output file
-        print >> of, input_w_tabs + str(result) + "\t" + \
-            str(expected) + "\t"
+        print(input_w_tabs + str(result) + "\t" + \
+            str(expected) + "\t", file=of)
         if expected == result:
-            print >> of, "correct"
+            print("correct", file=of)
         else:
-            print >> of, " *** INCORRECT *** "
+            print(" *** INCORRECT *** ", file=of)
     else:
-        print input_w_tabs + str(result) + "\t" + \
-            str(expected) + "\t"
+        print(input_w_tabs + str(result) + "\t" + \
+            str(expected) + "\t")
         if expected == result:
-            print "correct"
+            print("correct")
         else:
-            print " *** INCORRECT *** "
+            print(" *** INCORRECT *** ")
 
 
 def tm_overall(filename1, filename2):
@@ -362,7 +362,7 @@ def char_data(data):
 def TRANSprocessing():
     global TRANS, TRANS2
     TRANS2 = []
-    for k in TRANS.iteritems():
+    for k in TRANS.items():
         TRANS2.extend([k])
 
 
@@ -448,11 +448,11 @@ def checker(filename):
     takingInput(filename)
     # Find initial state
     initial_state = None
-    for k in TYPES.keys():
+    for k in list(TYPES.keys()):
         if 'initial' in TYPES[k]:
             initial_state = k
     # Run all of the inputs
-    for i in INPUTS2.iterkeys():
+    for i in INPUTS2.keys():
         if initial_state is None:
             print_result_line(i, "No initial state", " ")
         BEENTO = {}
@@ -474,19 +474,19 @@ def print_result_line(inpt, result, expected):
 
     global of
     if of is not None:  # if there is an output file
-        print >> of, input_w_tabs + str(result) + "\t" + \
-            str(expected) + "\t"
+        print(input_w_tabs + str(result) + "\t" + \
+            str(expected) + "\t", file=of)
         if expected == result:
-            print >> of, "correct"
+            print("correct", file=of)
         else:
-            print >> of, " *** INCORRECT *** "
+            print(" *** INCORRECT *** ", file=of)
     else:
-        print input_w_tabs + str(result) + "\t" + \
-            str(expected) + "\t"
+        print(input_w_tabs + str(result) + "\t" + \
+            str(expected) + "\t")
         if expected == result:
-            print "correct"
+            print("correct")
         else:
-            print " *** INCORRECT *** "
+            print(" *** INCORRECT *** ")
 
 
 def overall(filename1, filename2):
@@ -533,21 +533,21 @@ def test(student_file, tests_file, f):
 
     f, an open file indicating where the output file goes...
     """
-    print >> f, "\n+-+-+-+-+-+-+-+-+\n\n"
-    print >> f, "\n   File to be tested:\n"
-    print >> f, "\n   " + str(student_file) + "\n"
-    print >> f, "Input\t\toutput\texpected ~ result"
+    print("\n+-+-+-+-+-+-+-+-+\n\n", file=f)
+    print("\n   File to be tested:\n", file=f)
+    print("\n   " + str(student_file) + "\n", file=f)
+    print("Input\t\toutput\texpected ~ result", file=f)
     score, num_inputs, num_states = overall(student_file, tests_file)
-    print >> f, "\nHere is the total # correct :", score
-    print >> f, "Here is the total # of tests:", num_inputs
+    print("\nHere is the total # correct :", score, file=f)
+    print("Here is the total # of tests:", num_inputs, file=f)
     # Here is the # of states: num_states
     # each is out of 10 points, with -2 for each incorrect answer
     # So, if you miss five, no points remain!
     num_points_missed = min(10, 2 * (num_inputs - score))
-    print >> f, "# of pts missed  (out of 10):", num_points_missed
+    print("# of pts missed  (out of 10):", num_points_missed, file=f)
     total_points = 10 - num_points_missed
-    print >> f, "\nTotal points for this problem :", total_points
-    print >> f, "\n\n\n"
+    print("\nTotal points for this problem :", total_points, file=f)
+    print("\n\n\n", file=f)
     return total_points
 
 
@@ -558,21 +558,21 @@ def tm_test(student_file, tests_file, f):
 
     f, an open file indicating where the output file goes...
     """
-    print >> f, "\n+-+-+-+-+-+-+-+-+\n\n"
-    print >> f, "\n   File to be tested:\n"
-    print >> f, "\n   " + str(student_file) + "\n"
-    print >> f, "Input\t\toutput\texpected ~ result"
+    print("\n+-+-+-+-+-+-+-+-+\n\n", file=f)
+    print("\n   File to be tested:\n", file=f)
+    print("\n   " + str(student_file) + "\n", file=f)
+    print("Input\t\toutput\texpected ~ result", file=f)
     score, num_inputs, num_states = tm_overall(student_file, tests_file)
-    print >> f, "\nHere is the total # correct :", score
-    print >> f, "Here is the total # of tests:", num_inputs
+    print("\nHere is the total # correct :", score, file=f)
+    print("Here is the total # of tests:", num_inputs, file=f)
     # Here is the number of states: num_states
     # each is out of 10 points, with -2 for each incorrect answer
     # So, if you miss five, no points remain!
     num_points_missed = min(10, 2 * (num_inputs - score))
-    print >> f, "# of pts missed  (out of 10):", num_points_missed
+    print("# of pts missed  (out of 10):", num_points_missed, file=f)
     total_points = 10 - num_points_missed
-    print >> f, "\nTotal points for this problem :", total_points
-    print >> f, "\n\n\n"
+    print("\nTotal points for this problem :", total_points, file=f)
+    print("\n\n\n", file=f)
     return total_points
 
 
@@ -587,7 +587,7 @@ def testFileParser(filename):
     takingInput(filename)
 
     names = []
-    for n in INPUTS2.keys():
+    for n in list(INPUTS2.keys()):
         if n == '':
             names.append('empty')
         else:
@@ -649,7 +649,7 @@ def runTests(cmdPrefix, testFile, timeLimit):
 
         # find the initial state
         initial_state = None
-        for k in TYPES.keys():
+        for k in list(TYPES.keys()):
             if 'initial' in TYPES[k]:
                 initial_state = k
 
@@ -670,7 +670,7 @@ def runTests(cmdPrefix, testFile, timeLimit):
         summary['died'] = False
         failedTests = {}
 
-        for i in INPUTS2.iterkeys():
+        for i in INPUTS2.keys():
             BEENTO = {}
             result = stateTrans2(initial_state, i)
             summary['totalTests'] += 1
