@@ -338,8 +338,7 @@ def tm_stateTrans2(sState, left, right):
                         if s in [True, TOO_MANY]:
                             return s
 
-        if num_of_matching_transitions == 0:
-            return False
+        return False
 
 
 def tm_checker(filename):
