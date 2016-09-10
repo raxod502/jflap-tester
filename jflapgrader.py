@@ -10,6 +10,182 @@ from os.path import splitext
 
 of = None  # global output file name
 
+def takingInput(filename):
+    '''
+    Parse the specified test file, assigning the resulting data
+    structure to the global INPUTS2 variable. This function is
+    used only for NFAs, not Turing machines. After processing,
+    INPUTS2 will be a dictionary from bitstrings to boolean
+    values. See README.md for documentation on the format of test
+    files.
+    '''
+    # We have to continue using the ugly INPUTS2 global unless we want
+    # to restructure the control flow of the whole file.
+    #
+    # It didn't seem like the value of INPUT was used elsewhere, so I
+    # didn't bother assigning it in the new version of takingInputs.
+    global INPUTS2
+    INPUTS2 = {}
+    with open(filename) as f:
+        # Possible states are "standard" (reading manual test
+        # specifications), "reading_words_definition" (reading the
+        # definition of the 'words' function), and
+        # "reading_check_definition" (reading the definition of the
+        # 'check' function).
+        state = "standard"
+        # Lists of lines in the definitions of the 'words' and 'check'
+        # functions.
+        words_code_lines = []
+        check_code_lines = []
+        # This regex is used in two places: to check ahead of time
+        # whether 'check' is declared (for fail-fast behavior), and
+        # later to determine when 'check' is actually being declared.
+        check_def_regex = r'def check\([a-zA-Z_][a-zA-Z0-9_]*\):'
+        declares_check = any(re.fullmatch(check_def_regex, line.rstrip()) for line in f)
+        # Computing declares_check iterates through the file's lines.
+        # To iterate again, we have to reset the reader's position to
+        # the beginning.
+        f.seek(0)
+        # Start line numbering from 1.
+        for linum, line in enumerate(f, 1):
+            # Trim the trailing newline (and any other trailing
+            # whitespace). Note that we can't trim leading whitespace,
+            # because this would break any embedded Python function
+            # definitions.
+            line = line[:-1]
+            # Skip empty lines.
+            if not line:
+                continue
+            if state == "reading_words_definition":
+                # We assume that function declarations have ended when
+                # we find a line that isn't indented by 4 spaces.
+                # Since we skip empty lines previously, this means we
+                # can have them inside function definitions.
+                if line.startswith(" " * 4):
+                    words_code_lines.append(line)
+                else:
+                    state = "standard"
+            elif state == "reading_check_definition":
+                if line.startswith(" " * 4):
+                    check_code_lines.append(line)
+                else:
+                    state = "standard"
+            # If a function declaration has just ended, we want to
+            # allow the immediate next line to be a test
+            # specification, hence the 'if' instead of an 'elif'.
+            if state == "standard":
+                # The regex for test specifications is extremely
+                # permissive.
+                match = re.fullmatch(r'(empty|[0-1]*) ?((-> ?)?([a-z]+))?', line)
+                if match:
+                    # In the following code, word is the bitstring
+                    # input; result is a boolean indicating whether
+                    # the input should be accepted; result_word is a
+                    # key in result_words that identifies a result
+                    # boolean; and result_kword is what is actually in
+                    # the test file -- it should be a prefix of
+                    # exactly one of the result_kwords.
+                    word, result_kword = match.group(1, 4)
+                    # Account for the 'empty' special case, so that
+                    # word is guaranteed to be a bitstring (assuming
+                    # well-formed input).
+                    if word == 'empty':
+                        word = ''
+                    # If the desired result is specified manually:
+                    if result_kword:
+                        matches = []
+                        for result_word, result in result_words.items():
+                            if result_word.startswith(result_kword):
+                                matches.append(result_word)
+                        if not matches:
+                            print("Error on line {}: invalid result specifier.".format(linum))
+                            print("You provided '{}', but this does not match any of the valid result specifiers, which are: {}"
+                                  .format(result_kword, result_words.keys()))
+                            exit(1)
+                        elif len(matches) > 1:
+                            print("Error on line {}: ambiguous result specifier.".format(linum))
+                            print("You provided '{}', but this could match any of: {}"
+                                  .format(result_kword, matches))
+                            exit(1)
+                        else:
+                            INPUTS2[word] = result_words[matches[0]]
+                    # If the desired result is not specified manually,
+                    # then the test file *must* declare 'check':
+                    # Otherwise, we will have no way of determining
+                    # what the desired result should be.
+                    elif not declares_check:
+                        print("Error on line {}: result specifier not given."
+                              .format(linum))
+                        print("If you don't provide a result specifier, then you must define 'check'.")
+                        exit(1)
+                    else:
+                        # Leave the desired result for later computation.
+                        INPUTS2[word] = None
+                elif re.fullmatch(r'def words\(\):', line):
+                    # Only allow one definition of each function.
+                    if words_code_lines:
+                        print("Error on line {}: duplicate definition of 'words'."
+                              .format(linum))
+                        exit(1)
+                    else:
+                        words_code_lines.append(line)
+                        state = "reading_words_definition"
+                elif re.fullmatch(check_def_regex, line):
+                    if check_code_lines:
+                        print("Error on line {}: duplicate definition of 'check'."
+                              .format(linum))
+                        exit(1)
+                    else:
+                        check_code_lines.append(line)
+                        state = "reading_check_definition"
+                    continue
+                else:
+                    print("Error on line {}: malformed line.".format(linum))
+                    print("You provided: '{}'.".format(line))
+                    print("This is not a valid test case or definition start.")
+                    exit(1)
+        # Using a custom namespace is the preferred way to extract a
+        # declared variable from an 'exec' call. Note that this is
+        # usually done in a different way in Python 2, but as of
+        # Python 3 'exec' cannot modify local variables.
+        #
+        # Note that this also has the effect of preventing the code in
+        # the test file from reading from or writing to the actual
+        # global or local namespaces of this script, which is good.
+        #
+        # We do, however, want to make 'all_bitstrings' available to
+        # the test file's inline functions (in particular, to
+        # 'words'), hence the initial value of 'namespace'.
+        namespace = {'all_bitstrings': all_bitstrings}
+        # If one of the lists is empty, then the corresponding call is
+        # a no-op. There's no need to check first.
+        exec('\n'.join(words_code_lines), namespace)
+        exec('\n'.join(check_code_lines), namespace)
+        if words_code_lines:
+            # If 'words' is declared, then it will produce inputs with
+            # potentially unspecified desired results. So 'check' must
+            # also be declared in order for the desired results to be
+            # determined for these inputs. There are a few edge cases
+            # in which you could declare 'words' and not need to
+            # declare 'check' (like if 'words' returns an empty list,
+            # or all the inputs returned by 'words' also have their
+            # desired results manually specified), but these are silly
+            # and there's no real reason to special-case them.
+            if not check_code_lines:
+                print("Error: you defined 'words', but not 'check'.")
+                exit(1)
+            for word in namespace['words']():
+                # Allow overriding 'check' with manually specified
+                # test cases.
+                if word not in INPUTS2:
+                    INPUTS2[word] = None
+        if check_code_lines:
+            for word, result in INPUTS2.items():
+                # Only call 'check' if the desired result has not been
+                # manually specified.
+                if result is None:
+                    INPUTS2[word] = namespace['check'](word)
+
 
 def tm_start_element(name, attrs):
     global STATES, TYPES, current_state_id, seeking_start_state, \
@@ -384,183 +560,6 @@ result_words = {'accepted': True,
                 'rejected': False,
                 'yes': True,
                 'no': False}
-
-def takingInput(filename):
-    '''
-    Parse the specified test file, assigning the resulting data
-    structure to the global INPUTS2 variable. This function is
-    used only for NFAs, not Turing machines. After processing,
-    INPUTS2 will be a dictionary from bitstrings to boolean
-    values. See README.md for documentation on the format of test
-    files.
-    '''
-    # We have to continue using the ugly INPUTS2 global unless we want
-    # to restructure the control flow of the whole file.
-    #
-    # It didn't seem like the value of INPUT was used elsewhere, so I
-    # didn't bother assigning it in the new version of takingInputs.
-    global INPUTS2
-    INPUTS2 = {}
-    with open(filename) as f:
-        # Possible states are "standard" (reading manual test
-        # specifications), "reading_words_definition" (reading the
-        # definition of the 'words' function), and
-        # "reading_check_definition" (reading the definition of the
-        # 'check' function).
-        state = "standard"
-        # Lists of lines in the definitions of the 'words' and 'check'
-        # functions.
-        words_code_lines = []
-        check_code_lines = []
-        # This regex is used in two places: to check ahead of time
-        # whether 'check' is declared (for fail-fast behavior), and
-        # later to determine when 'check' is actually being declared.
-        check_def_regex = r'def check\([a-zA-Z_][a-zA-Z0-9_]*\):'
-        declares_check = any(re.fullmatch(check_def_regex, line.rstrip()) for line in f)
-        # Computing declares_check iterates through the file's lines.
-        # To iterate again, we have to reset the reader's position to
-        # the beginning.
-        f.seek(0)
-        # Start line numbering from 1.
-        for linum, line in enumerate(f, 1):
-            # Trim the trailing newline (and any other trailing
-            # whitespace). Note that we can't trim leading whitespace,
-            # because this would break any embedded Python function
-            # definitions.
-            line = line[:-1]
-            # Skip empty lines.
-            if not line:
-                continue
-            if state == "reading_words_definition":
-                # We assume that function declarations have ended when
-                # we find a line that isn't indented by 4 spaces.
-                # Since we skip empty lines previously, this means we
-                # can have them inside function definitions.
-                if line.startswith(" " * 4):
-                    words_code_lines.append(line)
-                else:
-                    state = "standard"
-            elif state == "reading_check_definition":
-                if line.startswith(" " * 4):
-                    check_code_lines.append(line)
-                else:
-                    state = "standard"
-            # If a function declaration has just ended, we want to
-            # allow the immediate next line to be a test
-            # specification, hence the 'if' instead of an 'elif'.
-            if state == "standard":
-                # The regex for test specifications is extremely
-                # permissive.
-                match = re.fullmatch(r'(empty|[0-1]*) ?((-> ?)?([a-z]+))?', line)
-                if match:
-                    # In the following code, word is the bitstring
-                    # input; result is a boolean indicating whether
-                    # the input should be accepted; result_word is a
-                    # key in result_words that identifies a result
-                    # boolean; and result_kword is what is actually in
-                    # the test file -- it should be a prefix of
-                    # exactly one of the result_kwords.
-                    word, result_kword = match.group(1, 4)
-                    # Account for the 'empty' special case, so that
-                    # word is guaranteed to be a bitstring (assuming
-                    # well-formed input).
-                    if word == 'empty':
-                        word = ''
-                    # If the desired result is specified manually:
-                    if result_kword:
-                        matches = []
-                        for result_word, result in result_words.items():
-                            if result_word.startswith(result_kword):
-                                matches.append(result_word)
-                        if not matches:
-                            print("Error on line {}: invalid result specifier.".format(linum))
-                            print("You provided '{}', but this does not match any of the valid result specifiers, which are: {}"
-                                  .format(result_kword, result_words.keys()))
-                            exit(1)
-                        elif len(matches) > 1:
-                            print("Error on line {}: ambiguous result specifier.".format(linum))
-                            print("You provided '{}', but this could match any of: {}"
-                                  .format(result_kword, matches))
-                            exit(1)
-                        else:
-                            INPUTS2[word] = result_words[matches[0]]
-                    # If the desired result is not specified manually,
-                    # then the test file *must* declare 'check':
-                    # Otherwise, we will have no way of determining
-                    # what the desired result should be.
-                    elif not declares_check:
-                        print("Error on line {}: result specifier not given."
-                              .format(linum))
-                        print("If you don't provide a result specifier, then you must define 'check'.")
-                        exit(1)
-                    else:
-                        # Leave the desired result for later computation.
-                        INPUTS2[word] = None
-                elif re.fullmatch(r'def words\(\):', line):
-                    # Only allow one definition of each function.
-                    if words_code_lines:
-                        print("Error on line {}: duplicate definition of 'words'."
-                              .format(linum))
-                        exit(1)
-                    else:
-                        words_code_lines.append(line)
-                        state = "reading_words_definition"
-                elif re.fullmatch(check_def_regex, line):
-                    if check_code_lines:
-                        print("Error on line {}: duplicate definition of 'check'."
-                              .format(linum))
-                        exit(1)
-                    else:
-                        check_code_lines.append(line)
-                        state = "reading_check_definition"
-                    continue
-                else:
-                    print("Error on line {}: malformed line.".format(linum))
-                    print("You provided: '{}'.".format(line))
-                    print("This is not a valid test case or definition start.")
-                    exit(1)
-        # Using a custom namespace is the preferred way to extract a
-        # declared variable from an 'exec' call. Note that this is
-        # usually done in a different way in Python 2, but as of
-        # Python 3 'exec' cannot modify local variables.
-        #
-        # Note that this also has the effect of preventing the code in
-        # the test file from reading from or writing to the actual
-        # global or local namespaces of this script, which is good.
-        #
-        # We do, however, want to make 'all_bitstrings' available to
-        # the test file's inline functions (in particular, to
-        # 'words'), hence the initial value of 'namespace'.
-        namespace = {'all_bitstrings': all_bitstrings}
-        # If one of the lists is empty, then the corresponding call is
-        # a no-op. There's no need to check first.
-        exec('\n'.join(words_code_lines), namespace)
-        exec('\n'.join(check_code_lines), namespace)
-        if words_code_lines:
-            # If 'words' is declared, then it will produce inputs with
-            # potentially unspecified desired results. So 'check' must
-            # also be declared in order for the desired results to be
-            # determined for these inputs. There are a few edge cases
-            # in which you could declare 'words' and not need to
-            # declare 'check' (like if 'words' returns an empty list,
-            # or all the inputs returned by 'words' also have their
-            # desired results manually specified), but these are silly
-            # and there's no real reason to special-case them.
-            if not check_code_lines:
-                print("Error: you defined 'words', but not 'check'.")
-                exit(1)
-            for word in namespace['words']():
-                # Allow overriding 'check' with manually specified
-                # test cases.
-                if word not in INPUTS2:
-                    INPUTS2[word] = None
-        if check_code_lines:
-            for word, result in INPUTS2.items():
-                # Only call 'check' if the desired result has not been
-                # manually specified.
-                if result is None:
-                    INPUTS2[word] = namespace['check'](word)
-
 
 def stateTrans2(sState, inputstring):
     # BEENTO should store both the current state AND the inputstring.
