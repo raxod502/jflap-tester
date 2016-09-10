@@ -23,7 +23,7 @@ def takingInput(filename):
     # to restructure the control flow of the whole file.
     #
     # It didn't seem like the value of INPUT was used elsewhere, so I
-    # didn't bother assigning it in the new version of takingInputs.
+    # didn't bother assigning it in the new version of takingInput.
     global INPUTS2
     INPUTS2 = {}
     with open(filename) as f:
