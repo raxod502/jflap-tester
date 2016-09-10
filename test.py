@@ -828,7 +828,7 @@ def runTests(jffFile, testFile, isTuringMachine):
     else:
         print('No tests specified.')
 
-usage = 'usage: jflapgrader.py [--tm] <jff-filename>'
+usage = 'usage: test.py [--tm] <jff-filename>'
 
 if __name__ == "__main__":
     if len(sys.argv) not in (2, 3):
