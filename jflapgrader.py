@@ -22,7 +22,7 @@ def all_bitstrings(length):
                 current = current[:i] + '1' + '0' * j
                 break
             elif i == 0:
-                current = '1' + '0' * len(current)
+                current = '0' * (len(current) + 1)
 
 result_words = {'accepted': True,
                 'rejected': False,
