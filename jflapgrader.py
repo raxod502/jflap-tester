@@ -843,6 +843,11 @@ def runTests(jffFile, testFile):
                           'accepted' if result else 'rejected'))
             exit(1)
 
+    if INPUTS2:
+        print('{} tests passed. Congratulations!'.format(len(INPUTS2)))
+    else:
+        print('No tests specified.')
+
 if __name__ == "__main__":
     if len(sys.argv) != 2:
         print('usage: jflapgrader.py <jff-filename>')
