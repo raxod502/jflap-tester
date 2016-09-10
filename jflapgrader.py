@@ -739,20 +739,18 @@ def testFileParser(filename):
     return names
 
 
-def runTests(jffFile, testFile):
+def runTests(jffFile, testFile, isTuringMachine):
     '''
-    Runs the tests defined in testFile on the NFA defined in jffFile.
-    If a test fails, prints an explanatory error message and exits
-    immediately.
+    Runs the tests defined in testFile on the NFA (or Turing machine)
+    defined in jffFile. If a test fails, prints an explanatory error
+    message and exits immediately.
     '''
-    # The code below is modified from the overall function
-    # (defined above).
-    global INPUTS, TRANS, STATES, TYPES, TRANS2, TRANS3, BEENTO, count, \
-        success, current_state_id, current_start_state, \
+    global INPUTS, TRANS, STATES, TYPES, TRANS2, TRANS3, count, \
+        success, BEENTO, current_state_id, current_start_state, \
         current_end_state, seeking_start_state, seeking_end_state, \
-        seeking_trans, current_trans
-    # Resetting a bunch of globals. This is required to allow
-    # multiple test files to be run in sequence.
+        seeking_trans, current_trans, seeking_read, seeking_write, \
+        current_read, current_write, seeking_move, current_move, \
+        steps
     STATES = []
     TYPES = {}
     TRANS = {}
@@ -761,6 +759,7 @@ def runTests(jffFile, testFile):
     INPUTS = []
     BEENTO = {}
     count = 0
+    success = False
     current_state_id = None
     current_start_state = None
     current_end_state = None
@@ -768,41 +767,55 @@ def runTests(jffFile, testFile):
     seeking_end_state = False
     seeking_trans = False
     current_trans = None
+    seeking_read = False
+    current_read = None
+    seeking_write = False
+    current_write = None
+    seeking_move = False
+    current_move = None
 
     p = xml.parsers.expat.ParserCreate()
 
-    p.StartElementHandler = start_element
-    p.EndElementHandler = end_element
-    p.CharacterDataHandler = char_data
+    if isTuringMachine:
+        p.StartElementHandler = tm_start_element
+        p.EndElementHandler = tm_end_element
+        p.CharacterDataHandler = tm_char_data
+    else:
+        p.StartElementHandler = start_element
+        p.EndElementHandler = end_element
+        p.CharacterDataHandler = char_data
 
     with open(jffFile, 'rb') as f:
         p.ParseFile(f)
 
-    TRANSprocessing()
+    if isTuringMachine:
+        tm_TRANSprocessing()
+    else:
+        TRANSprocessing()
 
-    # get the number of states
     num_states = len(STATES)
-
-    # We deviate from overall here so that we can handle the
-    # output the way we want to provide data back to the caller.
-    # This code is based on checker
 
     # Load the inputs
     takingInput(testFile)
 
     # find the initial state
     initial_state = None
-    for k in list(TYPES.keys()):
-        if 'initial' in TYPES[k]:
-            initial_state = k
+    for state, value in TYPES.items():
+        if 'initial' in value:
+            initial_state = state
 
     if initial_state is None:
-        print('Error: NFA has no initial state.')
+        print('Error: {} has no initial state.'
+              .format('Turing machine' if isTuringMachine else 'NFA'))
         exit(1)
 
     for word, expected_result in INPUTS2.items():
         BEENTO = {}
-        result = stateTrans2(initial_state, word)
+        steps = 0
+        if isTuringMachine:
+            result = tm_stateTrans2(initial_state, '', word)
+        else:
+            result = stateTrans2(initial_state, word)
         if result != expected_result:
             print('Error: failed test.')
             print("The input string '{}' should have been {}, but it was {}."
@@ -816,13 +829,20 @@ def runTests(jffFile, testFile):
     else:
         print('No tests specified.')
 
+usage = 'usage: jflapgrader.py [--tm] <jff-filename>'
+
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print('usage: jflapgrader.py <jff-filename>')
+    if len(sys.argv) not in (2, 3):
+        print(usage)
         exit(1)
-    jffFile = sys.argv[1]
+    isTuringMachine = sys.argv[1] == '--tm'
+    if len(sys.argv) == 3 and not isTuringMachine:
+        print(usage)
+        exit(1)
+    jffFile = sys.argv[2] if isTuringMachine else sys.argv[1]
     if not jffFile.endswith('.jff'):
-        print('Error: filename must end in .jff.')
+        print('Error: filename must end in .jff (you provided: {}).'
+              .format(jffFile))
         exit(1)
     # It would be preferable to just catch an exception instead of
     # checking at the beginning, but the control flow in this codebase
@@ -836,4 +856,4 @@ if __name__ == "__main__":
     if not os.path.isfile(testFile):
         print('Error: ' + testFile + ' does not exist.')
         exit(1)
-    runTests(jffFile, testFile)
+    runTests(jffFile, testFile, isTuringMachine)
