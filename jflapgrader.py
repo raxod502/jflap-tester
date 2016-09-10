@@ -277,37 +277,6 @@ def tm_TRANSprocessing():
                 trans_list[j][1] = '*'
 
 
-def tm_takingInput(filename):
-    global INPUTS, INPUTS2
-    INPUTS2 = {}
-    with open(filename) as f:
-        L = f.readlines()
-        for line in L:
-            line = line.strip()
-            pieces = line.split()
-            if len(pieces) == 2:
-                if not pieces[0].isdigit():
-                    pieces = ['', pieces[1]]
-            if len(pieces) == 3:
-                pieces = [pieces[0], pieces[2]]
-            INPUTS.append(pieces)
-        for i in range(len(INPUTS)):
-            if len(INPUTS[i]) == 0:
-                INPUTS2[""] = True
-            elif len(INPUTS[i]) == 1:
-                if INPUTS[i][0] != 'reject':
-                    INPUTS2[INPUTS[i][0]] = True
-                elif INPUTS[i][0] == 'reject':
-                    INPUTS2[""] = False
-                else:
-                    print("ERROR", INPUTS[i])
-            elif INPUTS[i][1] == 'reject':
-                INPUTS2[INPUTS[i][0]] = False
-            else:
-                print("ERROR", INPUTS[i])
-                INPUTS2[INPUTS[i][0]] = 'UNDEFINED. ERROR'
-
-
 def tm_stateTrans2(sState, left, right):
     global BEENTO
     global steps
@@ -377,7 +346,7 @@ def tm_checker(filename):
     global steps
     global BEENTO
     count = 0
-    tm_takingInput(filename)
+    takingInput(filename)
     num_inputs = len(INPUTS2)
 
     # WOW! must find the start state!!
