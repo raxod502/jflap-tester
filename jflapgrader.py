@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
+import os
 import re
+import sys
 import traceback
 import xml.parsers.expat
 
@@ -383,7 +385,7 @@ result_words = {'accept': True,
                 'yes': True,
                 'no': False}
 
-def takingInputs(filename):
+def takingInput(filename):
     '''
     Parse the specified test file, assigning the resulting data
     structure to the global INPUTS2 variable. This function is
@@ -769,10 +771,7 @@ def testFileParser(filename):
     return names
 
 
-def runTests(cmdPrefix, testFile, timeLimit):
-    # The students file is the basename of the test file with the
-    # jflap extension
-    studentFile = splitext(testFile)[0] + '.jff'
+def runTests(jffFile, testFile):
     try:
         # The code below is modified from the overall function
         # (defined above).
@@ -804,7 +803,7 @@ def runTests(cmdPrefix, testFile, timeLimit):
         p.EndElementHandler = end_element
         p.CharacterDataHandler = char_data
 
-        with open(studentFile) as f:
+        with open(jffFile, 'rb') as f:
             p.ParseFile(f)
 
         TRANSprocessing()
@@ -869,3 +868,27 @@ def runTests(cmdPrefix, testFile, timeLimit):
         summary['rawErr'] = str(tb)
         summary['timeout'] = False
         return summary, {}
+
+if __name__ == "__main__":
+    if len(sys.argv) != 2:
+        print('usage: jflapgrader.py <jff-filename>')
+        exit(1)
+    jffFile = sys.argv[1]
+    if not jffFile.endswith('.jff'):
+        print('Error: filename must end in .jff.')
+        exit(1)
+    # It would be preferable to just catch an exception instead of
+    # checking at the beginning, but the control flow in this codebase
+    # makes it really hard to tell what files may or may not be
+    # opened, and where. This way, I'm sure to only catch the error
+    # conditions I anticipate.
+    if not os.path.isfile(jffFile):
+        print('Error: ' + jffFile + ' does not exist.')
+        exit(1)
+    testFile = splitext(jffFile)[0] + '.test'
+    if not os.path.isfile(testFile):
+        print('Error: ' + testFile + ' does not exist.')
+        exit(1)
+    summary, failedTests = runTests(jffFile, testFile)
+    print(summary)
+    print(failedTests)
