@@ -772,102 +772,76 @@ def testFileParser(filename):
 
 
 def runTests(jffFile, testFile):
-    try:
-        # The code below is modified from the overall function
-        # (defined above).
-        global INPUTS, TRANS, STATES, TYPES, TRANS2, TRANS3, BEENTO, count, \
-            success, current_state_id, current_start_state, \
-            current_end_state, seeking_start_state, seeking_end_state, \
-            seeking_trans, current_trans
-        # Resetting a bunch of globals. This is required to allow
-        # multiple test files to be run in sequence.
-        STATES = []
-        TYPES = {}
-        TRANS = {}
-        TRANS2 = []
-        TRANS3 = []
-        INPUTS = []
+    '''
+    Runs the tests defined in testFile on the NFA defined in jffFile.
+    If a test fails, prints an explanatory error message and exits
+    immediately.
+    '''
+    # The code below is modified from the overall function
+    # (defined above).
+    global INPUTS, TRANS, STATES, TYPES, TRANS2, TRANS3, BEENTO, count, \
+        success, current_state_id, current_start_state, \
+        current_end_state, seeking_start_state, seeking_end_state, \
+        seeking_trans, current_trans
+    # Resetting a bunch of globals. This is required to allow
+    # multiple test files to be run in sequence.
+    STATES = []
+    TYPES = {}
+    TRANS = {}
+    TRANS2 = []
+    TRANS3 = []
+    INPUTS = []
+    BEENTO = {}
+    count = 0
+    current_state_id = None
+    current_start_state = None
+    current_end_state = None
+    seeking_start_state = False
+    seeking_end_state = False
+    seeking_trans = False
+    current_trans = None
+
+    p = xml.parsers.expat.ParserCreate()
+
+    p.StartElementHandler = start_element
+    p.EndElementHandler = end_element
+    p.CharacterDataHandler = char_data
+
+    with open(jffFile, 'rb') as f:
+        p.ParseFile(f)
+
+    TRANSprocessing()
+
+    # get the number of states
+    num_states = len(STATES)
+
+    # We deviate from overall here so that we can handle the
+    # output the way we want to provide data back to the caller.
+    # This code is based on checker
+
+    # Load the inputs
+    takingInput(testFile)
+
+    # find the initial state
+    initial_state = None
+    for k in list(TYPES.keys()):
+        if 'initial' in TYPES[k]:
+            initial_state = k
+
+    if initial_state is None:
+        print('Error: NFA has no initial state.')
+        exit(1)
+
+    for word, expected_result in INPUTS2.items():
         BEENTO = {}
-        count = 0
-        current_state_id = None
-        current_start_state = None
-        current_end_state = None
-        seeking_start_state = False
-        seeking_end_state = False
-        seeking_trans = False
-        current_trans = None
-
-        p = xml.parsers.expat.ParserCreate()
-
-        p.StartElementHandler = start_element
-        p.EndElementHandler = end_element
-        p.CharacterDataHandler = char_data
-
-        with open(jffFile, 'rb') as f:
-            p.ParseFile(f)
-
-        TRANSprocessing()
-
-        # get the number of states
-        num_states = len(STATES)
-
-        # We deviate from overall here so that we can handle the
-        # output the way we want to provide data back to the caller.
-        # This code is based on checker
-
-        # Load the inputs
-        takingInput(testFile)
-
-        # find the initial state
-        initial_state = None
-        for k in list(TYPES.keys()):
-            if 'initial' in TYPES[k]:
-                initial_state = k
-
-        if initial_state is None:
-            # If we have no initial state just die.
-            summary = {}
-            summary['died'] = True
-            summary['rawErr'] = "Automaton is missing its initial state"
-            summary['timeout'] = False
-            return summary, {}
-
-        summary = {}
-        summary['rawout'] = ''
-        summary['rawErr'] = ''
-        summary['failedTests'] = 0
-        summary['totalTests'] = 0
-        summary['timeout'] = False
-        summary['died'] = False
-        failedTests = {}
-
-        for i in INPUTS2.keys():
-            BEENTO = {}
-            result = stateTrans2(initial_state, i)
-            summary['totalTests'] += 1
-            if INPUTS2[i] != result:
-                summary['failedTests'] += 1
-
-                # Create a failure report.
-                report = {}
-                report['hint'] = "Expected: " + str(INPUTS2[i]) + " Got: " + str(result)
-                if i == '':
-                    failedTests['empty'] = report
-                else:
-                    failedTests[i] = report
-
-        return summary, failedTests
-
-    except Exception as e:
-        # I don't know what errors the system can throw or how it throws
-        # them so I will catch all errors and just report them rather
-        # than trying to be smart
-        tb = traceback.format_exc()
-        summary = {}
-        summary['died'] = True
-        summary['rawErr'] = str(tb)
-        summary['timeout'] = False
-        return summary, {}
+        result = stateTrans2(initial_state, word)
+        if result != expected_result:
+            print('Error: failed test.')
+            print("The input string '{}' should have been {}, but it was {}."
+                  .format(word,
+                          'accepted' if expected_result else 'rejected',
+                          'accepted' if result else 'rejected'))
+            exit(1)
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
@@ -889,6 +863,4 @@ if __name__ == "__main__":
     if not os.path.isfile(testFile):
         print('Error: ' + testFile + ' does not exist.')
         exit(1)
-    summary, failedTests = runTests(jffFile, testFile)
-    print(summary)
-    print(failedTests)
+    runTests(jffFile, testFile)
