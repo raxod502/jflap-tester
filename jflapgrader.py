@@ -380,8 +380,8 @@ def all_bitstrings(length):
             elif i == 0:
                 current = '1' + '0' * len(current)
 
-result_words = {'accept': True,
-                'reject': False,
+result_words = {'accepted': True,
+                'rejected': False,
                 'yes': True,
                 'no': False}
 
