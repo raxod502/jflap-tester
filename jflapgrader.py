@@ -10,6 +10,25 @@ from os.path import splitext
 
 of = None  # global output file name
 
+def all_bitstrings(length):
+    if length >= 0:
+        yield ''
+    current = '0'
+    while len(current) <= length:
+        yield current
+        for j in range(len(current)):
+            i = len(current) - 1 - j
+            if current[i] == '0':
+                current = current[:i] + '1' + '0' * j
+                break
+            elif i == 0:
+                current = '1' + '0' * len(current)
+
+result_words = {'accepted': True,
+                'rejected': False,
+                'yes': True,
+                'no': False}
+
 def takingInput(filename):
     '''
     Parse the specified test file, assigning the resulting data
@@ -509,25 +528,6 @@ def TRANSprocessing():
     for k in TRANS.items():
         TRANS2.extend([k])
 
-
-def all_bitstrings(length):
-    if length >= 0:
-        yield ''
-    current = '0'
-    while len(current) <= length:
-        yield current
-        for j in range(len(current)):
-            i = len(current) - 1 - j
-            if current[i] == '0':
-                current = current[:i] + '1' + '0' * j
-                break
-            elif i == 0:
-                current = '1' + '0' * len(current)
-
-result_words = {'accepted': True,
-                'rejected': False,
-                'yes': True,
-                'no': False}
 
 def stateTrans2(sState, inputstring):
     # BEENTO should store both the current state AND the inputstring.
