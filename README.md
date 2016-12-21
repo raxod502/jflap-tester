@@ -1,4 +1,11 @@
-# JFLAP Tester
+# JFLAP Tester (DEPRECATED)
+
+> Please note that this repository is deprecated in favor of the JFLAP
+> autograding functionality now available in [hmc-grader], which
+> provides a complete superset of the functionality of jflap-tester
+> and is also more robust because it is based on [jflap-lib].
+
+[jflap-lib]: https://github.com/raxod502/jflap-lib
 
 This is a command-line script designed for testing [NFAs][nfa]
 and [Turing machines][turing] created in [JFLAP]. The code for parsing
